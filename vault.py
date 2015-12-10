@@ -1,4 +1,4 @@
-import os
+import os, sys
 from urlparse import urljoin
 from ansible import utils, errors
 from ansible.utils import template
@@ -7,6 +7,7 @@ try:
     import requests
 except ImportError:
     raise errors.AnsibleError("Module 'requests' is required to do vault lookups")
+
 
 class LookupModule(object):
 
@@ -20,20 +21,10 @@ class LookupModule(object):
         except Exception, e:
             pass
 
-        vault_args = terms.split(' ')
-        vault_dict = {}
+        if os.sep != '/':
+            raise errors.AnsibleError('Unix only; we depend on / path separation functionality')
 
-        for param in vault_args:
-            key, value = param.split('=')
-            vault_dict[key] = value
-
-        if not ('secret' in vault_dict):
-            raise errors.AnsibleError('module needs secret= parameter')
-        if not ('field' in vault_dict):
-            raise errors.AnsibleError('module needs field= parameter')
-
-        secret = vault_dict['secret']
-        field = vault_dict['field']
+        secret, field = os.path.split(terms)
 
         url = os.getenv('VAULT_ADDR')
         if not url:
@@ -54,7 +45,9 @@ class LookupModule(object):
 
         data = r.json()['data']
 
-        if not (field in data):
-           raise errors.AnsibleError("Vault secret %s does not contain field %s" % (secret, field, str(data)))
-
-        return [ data[field] ]
+        if field == "": # we want the entire dict
+            return [ data ]
+        else:
+           if not (field in data):
+               raise errors.AnsibleError("Vault secret %s does not contain field %s" % (secret, field))
+           return [ data[field] ]
