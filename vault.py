@@ -21,10 +21,12 @@ class LookupModule(object):
         except Exception, e:
             pass
 
-        if os.sep != '/':
-            raise errors.AnsibleError('Unix only; we depend on / path separation functionality')
+        splitted = terms.split(':')
+        if len(splitted)<2:
+            raise errors.AnsibleError("secret '%s' does not specify a secret field, only a path." % terms)
 
-        secret, field = os.path.split(terms)
+        secret = splitted[0]
+        field = splitted[1]
 
         url = os.getenv('VAULT_ADDR')
         if not url:
